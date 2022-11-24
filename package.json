@@ -1,13 +1,14 @@
 {
   "name": "@rxfx/firebase",
-  "version": "1.0.1",
+  "version": "0.9.0",
   "license": "MIT",
   "author": "Dean Radcliffe",
-  "repository": "https://github.com/deanrad/rxfx",
-  "main": "dist/rxfx-after.min.js",
-  "module": "dist/rxfx-after.esm.js",
+  "repository": "https://github.com/deanrad/rxfx-firebase",
+  "main": "dist/rxfx-firebase.min.js",
+  "module": "dist/rxfx-firebase.esm.js",
   "typings": "dist/tsc/types/src/index.d.ts",
   "sideEffects": false,
+  "type": "module",
   "files": [
     "dist"
   ],
@@ -29,6 +30,7 @@
     "build": "rimraf dist && tsc && timeout --foreground --preserve-status 10 rollup -c rollup.config.js"
   },
   "dependencies": {
+    "firebase": "^9.14.0",
     "rxjs": "^7.3.0",
     "tslib": "^2.3.1"
   },
@@ -38,7 +40,6 @@
     "@babel/preset-typescript": ">= 7.15.0",
     "@open-wc/building-rollup": ">= 1.10.0",
     "@rollup/plugin-typescript": ">= 8.2.5",
-    "@size-limit/preset-small-lib": ">= 5.0.3",
     "@types/jest": ">= 27.0.1",
     "@typescript-eslint/eslint-plugin": ">= 4.31.2",
     "@typescript-eslint/parser": ">= 4.31.2",
@@ -56,7 +57,6 @@
     "react-dom": ">= 18.2.0",
     "rimraf": ">= 3.0.2",
     "rollup": ">= 2.56.2",
-    "size-limit": ">= 5.0.3",
     "tiny-invariant": ">= 1.1.0",
     "typedoc": ">= 0.21.5",
     "typescript": ">= 4.3.5"

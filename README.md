@@ -1,94 +1,55 @@
-# 𝗥𝘅𝑓𝑥 `after`
+# 𝗥𝘅𝑓𝑥 `firebase`
 
-A hybrid of Promise and Observable, useful for introducing delays, or creating scripts of delays, which are cancelable or `await`-able. Part of the [𝗥𝘅𝑓𝑥](https://github.com/deanrad/rxfx) family of libraries.
-
-`after` makes common use-cases of deferred values and function calls more readable, and works in an Observable or Promise context (eg with `await`).
+An 𝗥𝘅𝑓𝑥/RxJS friendly way of communicating with Firebase Realtime Database. A turnkey alternative to WebSockets.
 
 
-Call styles
-- `after(0, value)`
-- `after(N, value)`
-- `after(N, ()=>value)) `
-- `after(N, Observable))`         
-- `after(Promise, ()=>value))`
-- `after(Promise, ()=>value, { unsubscribe(){ console.log('canceled'); })`
-- `after(setTimeout, ()=>value))`
+## Overview
+1. Install `yarn add @rxfx/firebase`
+1. Set up a Firebase database at https://console.firebase.google.com/, following the instructions below
+1. Connect with Firebase config
+1. Consume from the `inbox`, and send via the `outbox`
 
-Behaviors:
-Assuming `const fn = ()=>value;`
+## Approach
 
-- `after(0, value).subscribe(next: console.log)`
-  - Logs `value` synchronously
-- `const result = await after(N, value)`
-  - Populates `result` with `value` after `N` milliseconds
-- ` const result = await after(N, fn)`
-  - Invokes synchronous `fn` and populates `result` with `value` after `N` milliseconds
-- `after(N, obs:Observable))`         
-  - Creates an `AwaitableObservable` whose notifications _and_ subscription are delayed by `N`. Note this differs from `obs.pipe(delay(N))` which delays only notifications.
-- `after(promise, fn))`
-  - Creates an `AwaitableObservable` of the invocation of `fn` with the resolution of `promise`. But it is cancelable: `after(Promise.resolve(), console.log).subscribe().unsubscribe()` will not invoke `console.log`.
-- `after(setTimeout, fn))`
-  - Invokes `fn` ala `setTimeout(fn, 0)` to schedule `fn()` on the macro-task queue. 
-- `after(..., { unsubscribe(){ console.log('canceled'); })`
-  - Invoke a callback f the subscription of the `after` has its `unsubscribe()` method called: 
-  - `const sub = after(...).subscribe(); /* later */ sub.unsubscribe();`
+The Collection will contain a new item for each item passed to `outbox.next`, and every connected client will get every previous message from that collection in its `inbox` when it connects.
 
-`after` also re-exports `concat` from RxJS, so several `after`s can be sequenced:
+This is not suitable for every use case - most notably, it is not a typical CRUD model, it is more of an Event Log. To achieve CRUD, the `inbox` at each participant could reduce its events via RxJS' `scan`.
 
+Also, this is not a great model for 'transient' messages, as every .
+
+## Minimal Code
 ```js
-concat(
-  after(0, () => console.log("started")),
-  after(250, () => console.log("complete"))
-).subscribe();
-console.log("work is in progress")
-
-// "started"               // synchronously
-// "work is in progress" 
-// "complete"              // after 250 msec
-```
-
-## Details
-
-Technically, `after` returns an Observable with both `subscribe` and `then` methods on it, meaning it acts as either a Promise or an Observable! We call this type `AwaitableObservable`, and when awaited, it resolves to the `firstValueFrom` of the Observable.
-
-Keep in mind, however, that since it is an Observable underneath, it is _lazy_. Unless you call `subscribe` or `then`, a function arg passed to it will _not_ be invoked. Think of `after` as creating an _unstarted process_ for a zero or a non-zero delay. And which produces a return value, not only calling a function.
-
-`await after(100, ()=>console.log('done'))` _will_ work however, because of the `.then` method.
-
-A subscription to `after(..)` is of course cancelable, so the latter part can remain un-invoked. This benefit is only available with `.subscribe()`, not with `await`.
-
-## Where Is it Most Useful
-
-Mock behavior - in Storybook, tests, etc. If you have a system that depends on async values, you can swap in an `after`-returning function for either a Promise-returning or Observable-returning function.
-
-For example, in this example of a batch-lookup script, you can approximate the timing with an `after`, and in tests, then switch to a real endpoint, and the timing and sequencing will work the same, _guaranteed_.
-
-```js
-const mockLookup = id => after(1000, ()=>({id, username: 'foo'}));
-const realLookup = id => fetch(`/someurl?id=${id}`).then(r=>r.json())
-
-const idsToProcess = [1,2,3...];
-const process = from(idsToProcess).pipe(
-  concatMap(mockLookup),
-  // concatMap(realLookup),
-  tap(console.log)
+const firebaseConfig = /* your config, perhaps loaded from localStorage */
+const COLLECTION = "_test_chat";
+const { inbox, outbox } = connect<{ username: string; message: string }>(
+  firebaseConfig,
+  COLLECTION,
 );
-const execution = process.subscribe({complete(){ console.log('done') });
-// execution.unsubscribe()  // if you need to cancel
+
+// Send
+outbox.next({username: 'Me', message: 'Hello World!'});
+
+// Consume to update UI
+inbox.subscribe(([key, msg]) => {
+  const message = ```
+     <li data-key=${key}><span>${msg.username}:</span>${msg.message}</li>
+  ```;
+  // append the message on the page
+});
+
 ```
 
-## 3rd argument - Observer
-
-You can pass an Observer as the 3rd argument. This is most useful for detecting when the `after` is canceled.
-
-```js
-after(
-   Promise.resolve(),
-   () => console.log("complete"),
-   { unsubscribe(){ console.log("canceled")} }
-)
- .subscribe()  
- .unsubscribe();
-
-// "canceled"
-```
+## Firebase Setup
+- Run `npm install firesocket`
+- [Install](https://firebase.google.com/docs/cli#install_the_firebase_cli) `firebase` cli
+- Set up [Realtime Database](https://firebase.google.com/docs/database) security rules
+  - Run `firebase login`
+  - Run `firebase init`
+    - Create new project or use existing project created in [Console](https://console.firebase.google.com/)
+    - Select Database
+    - For security rules, use the path `node_modules/firesocket/database.rules.json`
+    - Don't delete the existing file
+  - Run `firebase deploy --only database`
+- Set up [Authentication](https://firebase.google.com/docs/auth)
+  - https://console.firebase.google.com/u/0/project/_/authentication
+  - Enable Anonymous, and/or another provider to allow for resumption of socket connection

@@ -8,10 +8,10 @@ import {
   onChildAdded,
 } from 'firebase/database';
 
-export function init<ItemType>(
+export function connect<ItemType>(
   config: any,
   collection: string,
-  keyMaker = (item: any) => Date.now()
+  keyMaker = (() => `${Date.now()}`) as (item: ItemType) => string
 ) {
   const allSubs = new Subscription();
 
@@ -50,6 +50,6 @@ export function init<ItemType>(
   return {
     inbox,
     outbox,
-    unsubscribe: () => allSubs.unsubscribe(),
+    disconnect: () => allSubs.unsubscribe(),
   };
 }
